@@ -15,6 +15,17 @@
  */
 package org.springframework.data.jdbc.repository;
 
+import static java.util.Arrays.*;
+import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.groups.Tuple.tuple;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.stubbing.Answer;
@@ -23,7 +34,16 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jdbc.core.convert.*;
+import org.springframework.data.jdbc.core.convert.BatchJdbcOperations;
+import org.springframework.data.jdbc.core.convert.DefaultDataAccessStrategy;
+import org.springframework.data.jdbc.core.convert.DefaultJdbcTypeFactory;
+import org.springframework.data.jdbc.core.convert.DelegatingDataAccessStrategy;
+import org.springframework.data.jdbc.core.convert.InsertStrategyFactory;
+import org.springframework.data.jdbc.core.convert.JdbcConverter;
+import org.springframework.data.jdbc.core.convert.JdbcCustomConversions;
+import org.springframework.data.jdbc.core.convert.MappingJdbcConverter;
+import org.springframework.data.jdbc.core.convert.SqlGeneratorSource;
+import org.springframework.data.jdbc.core.convert.SqlParametersFactory;
 import org.springframework.data.jdbc.core.mapping.JdbcMappingContext;
 import org.springframework.data.jdbc.repository.support.JdbcRepositoryFactory;
 import org.springframework.data.jdbc.repository.support.SimpleJdbcRepository;
@@ -48,16 +68,6 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.lang.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
-import static java.util.Arrays.*;
-import static org.assertj.core.api.Assertions.*;
-import static org.assertj.core.groups.Tuple.tuple;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
 /**
  * Unit tests for application events via {@link SimpleJdbcRepository}.
  *
@@ -73,7 +83,7 @@ class SimpleJdbcRepositoryEventsUnitTests {
 
 	private static final long generatedId = 4711L;
 
-	private CollectingEventPublisher publisher = new CollectingEventPublisher();
+	private final CollectingEventPublisher publisher = new CollectingEventPublisher();
 
 	private DummyEntityRepository repository;
 	private DefaultDataAccessStrategy dataAccessStrategy;
@@ -86,8 +96,8 @@ class SimpleJdbcRepositoryEventsUnitTests {
 
 		Dialect dialect = HsqlDbDialect.INSTANCE;
 		DelegatingDataAccessStrategy delegatingDataAccessStrategy = new DelegatingDataAccessStrategy();
-		JdbcConverter converter = new BasicJdbcConverter(context, delegatingDataAccessStrategy, new JdbcCustomConversions(),
-				new DefaultJdbcTypeFactory(operations.getJdbcOperations()), dialect.getIdentifierProcessing());
+		JdbcConverter converter = new MappingJdbcConverter(context, delegatingDataAccessStrategy,
+				new JdbcCustomConversions(), new DefaultJdbcTypeFactory(operations.getJdbcOperations()));
 		SqlGeneratorSource generatorSource = new SqlGeneratorSource(context, converter, dialect);
 		SqlParametersFactory sqlParametersFactory = new SqlParametersFactory(context, converter);
 		InsertStrategyFactory insertStrategyFactory = new InsertStrategyFactory(operations,
@@ -312,12 +322,11 @@ class SimpleJdbcRepositoryEventsUnitTests {
 
 		public boolean equals(final Object o) {
 			if (o == this) return true;
-			if (!(o instanceof DummyEntity)) return false;
-			final DummyEntity other = (DummyEntity) o;
+			if (!(o instanceof final DummyEntity other))
+				return false;
 			final Object this$id = this.getId();
 			final Object other$id = other.getId();
-			if (this$id == null ? other$id != null : !this$id.equals(other$id)) return false;
-			return true;
+			return Objects.equals(this$id, other$id);
 		}
 
 		public int hashCode() {
